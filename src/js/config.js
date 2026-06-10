@@ -3,8 +3,8 @@
 // IMPORTANTE: reemplazar con tus credenciales de Supabase
 // ============================================================
 
-const SUPABASE_URL = 'https://TU_PROYECTO.supabase.co';
-const SUPABASE_ANON_KEY = 'TU_ANON_KEY';
+const SUPABASE_URL = 'https://zjlltoahotfughsfvxoy.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpqbGx0b2Fob3RmdWdoc2Z2eG95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMTczNDksImV4cCI6MjA5NjY5MzM0OX0.yek1xumidpwEcENtHy4IsC9guNbqZbFdkA8JQRJ2pZ0';
 
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

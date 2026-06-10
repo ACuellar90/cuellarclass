@@ -238,7 +238,7 @@ async function submitAlumno() {
     };
 
     if (pass) {
-      payload.password_hash = await bcrypt.hash(pass, 10);
+      payload.password_hash = await dcodeIO.bcrypt.hash(pass, 10);
     }
 
     if (id) {
@@ -337,7 +337,7 @@ async function confirmarImport(alumnos, seccionId) {
   const btn = event.target;
   btn.disabled = true; btn.textContent = 'Importando...';
   const defaultPass = 'alumno2026';
-  const hash = await bcrypt.hash(defaultPass, 10);
+  const hash = await dcodeIO.bcrypt.hash(defaultPass, 10);
 
   const inserts = alumnos.map(a => ({
     nombre: a.nombre, email: a.email,
@@ -1196,7 +1196,7 @@ async function resetAnual() {
 async function cambiarPassword() {
   const nueva = prompt('Nueva contrasena (min 6 caracteres):');
   if (!nueva || nueva.length < 6) { showToast('Contrasena muy corta', 'error'); return; }
-  const hash = await bcrypt.hash(nueva, 10);
+  const hash = await dcodeIO.bcrypt.hash(nueva, 10);
   await db.from('usuarios').update({ password_hash: hash }).eq('id', SESSION.id);
   showToast('Contrasena actualizada', 'success');
 }

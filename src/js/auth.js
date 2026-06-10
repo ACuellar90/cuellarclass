@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const usuario = usuarios[0];
 
       // Verificar password con bcrypt (cargado via CDN)
-      const match = await bcrypt.compare(pass, usuario.password_hash);
+      const match = await dcodeIO.bcrypt.compare(pass, usuario.password_hash);
       if (!match) {
         errMsg.textContent = 'Correo o contrasena incorrectos.';
         return;
