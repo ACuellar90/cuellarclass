@@ -40,6 +40,9 @@
         <span class="nav-icon">💬</span> Foro
       </div>
       <div class="sidebar-section">Sistema</div>
+      <div class="nav-item" data-tab="docentes" onclick="mostrarTab('docentes')">
+        <span class="nav-icon">👨‍🏫</span> Docentes
+      </div>
       <div class="nav-item" data-tab="config" onclick="mostrarTab('config')">
         <span class="nav-icon">⚙️</span> Configuracion
       </div>
@@ -76,6 +79,7 @@
       <div id="section-examenes"   class="page-section hidden"></div>
       <div id="section-encuestas"  class="page-section hidden"></div>
       <div id="section-foro"       class="page-section hidden"></div>
+      <div id="section-docentes"   class="page-section hidden"></div>
       <div id="section-config"     class="page-section hidden"></div>
     </div>
   </div>
@@ -373,6 +377,41 @@
       <button class="modal-close" onclick="closeModal('modal-post-detail')">✕</button>
     </div>
     <div class="modal-body" id="post-detail-body"></div>
+  </div>
+</div>
+
+<!-- Modal: Docente -->
+<div id="modal-docente" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-docente-titulo">Nuevo docente</h3>
+      <button class="modal-close" onclick="closeModal('modal-docente')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="docente-id">
+      <div class="form-group mb-2">
+        <label class="form-label">Nombre completo *</label>
+        <input type="text" id="docente-nombre" class="form-input" placeholder="Ej: Maria Lopez">
+      </div>
+      <div class="form-group mb-2">
+        <label class="form-label">Correo *</label>
+        <input type="email" id="docente-email" class="form-input" placeholder="docente@idsje.edu.sv">
+      </div>
+      <div class="form-group mb-2">
+        <label class="form-label">Contrasena *</label>
+        <input type="text" id="docente-pass" class="form-input" placeholder="Minimo 6 caracteres">
+        <span class="form-hint">Dejar vacio para no cambiar (edicion)</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Foto de perfil</label>
+        <input type="file" id="docente-foto" class="form-input" accept="image/*" onchange="previewFotoDocente()">
+        <div id="docente-foto-preview" style="margin-top:8px"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-docente')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-submit-docente" onclick="submitDocente()">Guardar</button>
+    </div>
   </div>
 </div>
 

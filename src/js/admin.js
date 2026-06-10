@@ -56,7 +56,7 @@ function mostrarTab(tab) {
   document.querySelectorAll('.page-section').forEach(el => el.classList.toggle('hidden', el.id !== `section-${tab}`));
   const titles = {
     dashboard: 'Dashboard', alumnos: 'Alumnos', tareas: 'Tareas',
-    examenes: 'Examenes', encuestas: 'Encuestas', foro: 'Foro', config: 'Configuracion',
+    examenes: 'Examenes', encuestas: 'Encuestas', foro: 'Foro', docentes: 'Docentes', config: 'Configuracion',
   };
   document.getElementById('topbar-titulo').textContent = titles[tab] || 'Admin';
   loadSection(tab);
@@ -73,6 +73,7 @@ async function loadSection(tab) {
     case 'examenes':   await renderExamenes(); break;
     case 'encuestas':  await renderEncuestas(); break;
     case 'foro':       await renderForo(); break;
+    case 'docentes':   await renderDocentes(); break;
     case 'config':     await renderConfig(); break;
   }
 }
@@ -1204,4 +1205,139 @@ async function cambiarPassword() {
 function logout() {
   clearSession();
   window.location.href = '/index.html';
+}
+
+// ── DOCENTES ──────────────────────────────────────────────
+async function renderDocentes() {
+  const el = document.getElementById('section-docentes');
+
+  const { data: docentes } = await db
+    .from('usuarios')
+    .select('*')
+    .eq('rol', 'docente')
+    .eq('activo', true)
+    .order('nombre');
+
+  el.innerHTML = `
+    <div class="page-header flex-between">
+      <div><h2>Docentes</h2><p>${docentes?.length || 0} docentes registrados</p></div>
+      <button class="btn btn-primary" onclick="abrirNuevoDocente()">+ Nuevo docente</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Docente</th><th>Email</th><th></th></tr></thead>
+        <tbody>
+          ${!docentes || docentes.length === 0
+            ? '<tr><td colspan="3"><div class="empty-state"><div class="empty-icon">👨‍🏫</div><h3>Sin docentes</h3><p>Crea el primer docente.</p></div></td></tr>'
+            : docentes.map(d => `
+              <tr>
+                <td>
+                  <div class="flex gap-1" style="align-items:center">
+                    ${renderAvatar(d.foto_url, d.nombre, 36)}
+                    <div>
+                      <div class="fw-600">${d.nombre}</div>
+                      ${d.id === SESSION.id ? '<span class="badge badge-gold" style="font-size:10px">Tu cuenta</span>' : ''}
+                    </div>
+                  </div>
+                </td>
+                <td class="text-gray">${d.email}</td>
+                <td>
+                  <div class="flex gap-1">
+                    <button class="btn btn-sm btn-ghost" onclick="editarDocente('${d.id}')">✏️ Editar</button>
+                    ${d.id !== SESSION.id
+                      ? `<button class="btn btn-sm btn-ghost" onclick="desactivarDocente('${d.id}')">🗑 Desactivar</button>`
+                      : ''}
+                  </div>
+                </td>
+              </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function abrirNuevoDocente() {
+  document.getElementById('modal-docente-titulo').textContent = 'Nuevo docente';
+  document.getElementById('docente-id').value = '';
+  document.getElementById('docente-nombre').value = '';
+  document.getElementById('docente-email').value = '';
+  document.getElementById('docente-pass').value = '';
+  document.getElementById('docente-foto-preview').innerHTML = '';
+  openModal('modal-docente');
+}
+
+async function editarDocente(id) {
+  const { data: d } = await db.from('usuarios').select('*').eq('id', id).single();
+  document.getElementById('modal-docente-titulo').textContent = 'Editar docente';
+  document.getElementById('docente-id').value = d.id;
+  document.getElementById('docente-nombre').value = d.nombre;
+  document.getElementById('docente-email').value = d.email;
+  document.getElementById('docente-pass').value = '';
+  document.getElementById('docente-foto-preview').innerHTML = d.foto_url
+    ? `<img src="${d.foto_url}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)">` : '';
+  openModal('modal-docente');
+}
+
+async function submitDocente() {
+  const id     = document.getElementById('docente-id').value;
+  const nombre = document.getElementById('docente-nombre').value.trim();
+  const email  = document.getElementById('docente-email').value.trim().toLowerCase();
+  const pass   = document.getElementById('docente-pass').value;
+  const foto   = document.getElementById('docente-foto').files[0];
+
+  if (!nombre || !email) { showToast('Nombre y email son obligatorios', 'error'); return; }
+  if (!id && !pass) { showToast('La contrasena es obligatoria para nuevos docentes', 'error'); return; }
+  if (pass && pass.length < 6) { showToast('La contrasena debe tener al menos 6 caracteres', 'error'); return; }
+
+  const btn = document.getElementById('btn-submit-docente');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  try {
+    let foto_url = null;
+    if (foto) foto_url = await uploadToCloudinary(foto);
+
+    const payload = {
+      nombre, email, rol: 'docente', activo: true,
+      ...(foto_url ? { foto_url } : {}),
+    };
+
+    if (pass) {
+      payload.password_hash = await dcodeIO.bcrypt.hash(pass, 10);
+    }
+
+    if (id) {
+      const { error } = await db.from('usuarios').update(payload).eq('id', id);
+      if (error) throw error;
+      showToast('Docente actualizado', 'success');
+    } else {
+      const { error } = await db.from('usuarios').insert(payload);
+      if (error) throw error;
+      showToast('Docente creado correctamente', 'success');
+    }
+
+    closeModal('modal-docente');
+    _loaded['docentes'] = false;
+    await renderDocentes();
+  } catch (err) {
+    console.error(err);
+    showToast('Error: ' + (err.message || 'Intenta de nuevo'), 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar';
+  }
+}
+
+async function desactivarDocente(id) {
+  if (!confirm('Desactivar este docente?')) return;
+  await db.from('usuarios').update({ activo: false }).eq('id', id);
+  showToast('Docente desactivado', 'success');
+  _loaded['docentes'] = false;
+  await renderDocentes();
+}
+
+function previewFotoDocente() {
+  const file = document.getElementById('docente-foto').files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  document.getElementById('docente-foto-preview').innerHTML =
+    `<img src="${url}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)">`;
 }
