@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .eq('activo', true)
         .limit(1);
 
+      console.log("usuarios:", usuarios, "error:", error);
       if (error) throw error;
 
       if (!usuarios || usuarios.length === 0) {
