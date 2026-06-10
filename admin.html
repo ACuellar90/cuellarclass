@@ -380,6 +380,62 @@
   </div>
 </div>
 
+<!-- Modal: Materia -->
+<div id="modal-materia" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-materia-titulo">Nueva materia</h3>
+      <button class="modal-close" onclick="closeModal('modal-materia')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="materia-id">
+      <div class="form-group">
+        <label class="form-label">Nombre de la materia *</label>
+        <input type="text" id="materia-nombre" class="form-input" placeholder="Ej: Informatica">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-materia')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-submit-materia" onclick="submitMateria()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Seccion -->
+<div id="modal-seccion" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-seccion-titulo">Nueva seccion</h3>
+      <button class="modal-close" onclick="closeModal('modal-seccion')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="seccion-id">
+      <div class="form-group mb-2">
+        <label class="form-label">Nombre de la seccion *</label>
+        <input type="text" id="seccion-nombre" class="form-input" placeholder="Ej: 1A, 2B, 3C">
+      </div>
+      <div class="form-group mb-2">
+        <label class="form-label">Año</label>
+        <select id="seccion-anio" class="form-select">
+          <option value="1">1° Bachillerato</option>
+          <option value="2">2° Bachillerato</option>
+          <option value="3">3° Bachillerato</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Materia asignada</label>
+        <select id="seccion-materia" class="form-select">
+          <option value="">-- Sin materia --</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-seccion')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-submit-seccion" onclick="submitSeccion()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Docente -->
 <div id="modal-docente" class="modal-overlay hidden">
   <div class="modal">

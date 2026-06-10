@@ -1095,20 +1095,28 @@ async function renderConfig() {
       <div class="card">
         <div class="card-header"><h3>Materias</h3><button class="btn btn-sm btn-primary" onclick="nuevaMateria()">+ Agregar</button></div>
         <div class="card-body">
+          ${(materias||[]).length === 0 ? '<p class="text-gray" style="font-size:14px">Sin materias.</p>' : ''}
           ${(materias||[]).map(m => `
-            <div class="flex-between mb-2">
-              <span>${m.nombre}</span>
-              <button class="btn btn-sm btn-ghost" onclick="eliminarMateria('${m.id}')">🗑</button>
+            <div class="flex-between mb-2" style="padding:8px 0;border-bottom:1px solid var(--gray-100)">
+              <span class="fw-600">${m.nombre}</span>
+              <div class="flex gap-1">
+                <button class="btn btn-sm btn-ghost" onclick="editarMateria('${m.id}')">✏️</button>
+                <button class="btn btn-sm btn-ghost" onclick="eliminarMateria('${m.id}')">🗑</button>
+              </div>
             </div>`).join('')}
         </div>
       </div>
       <div class="card">
         <div class="card-header"><h3>Secciones</h3><button class="btn btn-sm btn-primary" onclick="nuevaSeccion()">+ Agregar</button></div>
         <div class="card-body">
+          ${(secciones||[]).length === 0 ? '<p class="text-gray" style="font-size:14px">Sin secciones.</p>' : ''}
           ${(secciones||[]).map(s => `
-            <div class="flex-between mb-2">
-              <div><span class="seccion-chip">${s.nombre}</span> <span class="text-gray" style="font-size:13px">${s.materias?.nombre||'—'}</span></div>
-              <button class="btn btn-sm btn-ghost" onclick="eliminarSeccion('${s.id}')">🗑</button>
+            <div class="flex-between mb-2" style="padding:8px 0;border-bottom:1px solid var(--gray-100)">
+              <div><span class="seccion-chip">${s.nombre}</span> <span class="text-gray" style="font-size:13px;margin-left:8px">${s.materias?.nombre||'—'}</span></div>
+              <div class="flex gap-1">
+                <button class="btn btn-sm btn-ghost" onclick="editarSeccion('${s.id}')">✏️</button>
+                <button class="btn btn-sm btn-ghost" onclick="eliminarSeccion('${s.id}')">🗑</button>
+              </div>
             </div>`).join('')}
         </div>
       </div>
@@ -1137,31 +1145,99 @@ async function renderConfig() {
   `;
 }
 
-async function nuevaMateria() {
-  const nombre = prompt('Nombre de la materia:');
-  if (!nombre?.trim()) return;
-  await db.from('materias').insert({ nombre: nombre.trim() });
-  showToast('Materia creada', 'success');
-  await cargarSeccionesYMaterias();
-  _loaded['config'] = false; await renderConfig();
+function nuevaMateria() {
+  document.getElementById('materia-id').value = '';
+  document.getElementById('materia-nombre').value = '';
+  document.getElementById('modal-materia-titulo').textContent = 'Nueva materia';
+  openModal('modal-materia');
+}
+
+async function submitMateria() {
+  const id     = document.getElementById('materia-id').value;
+  const nombre = document.getElementById('materia-nombre').value.trim();
+  if (!nombre) { showToast('Escribe el nombre', 'error'); return; }
+  const btn = document.getElementById('btn-submit-materia');
+  btn.disabled = true;
+  try {
+    if (id) {
+      await db.from('materias').update({ nombre }).eq('id', id);
+      showToast('Materia actualizada', 'success');
+    } else {
+      await db.from('materias').insert({ nombre });
+      showToast('Materia creada', 'success');
+    }
+    closeModal('modal-materia');
+    await cargarSeccionesYMaterias();
+    _loaded['config'] = false; await renderConfig();
+  } catch (err) {
+    showToast('Error al guardar', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function editarMateria(id) {
+  const m = _MATERIAS.find(m => m.id === id);
+  if (!m) return;
+  document.getElementById('materia-id').value = m.id;
+  document.getElementById('materia-nombre').value = m.nombre;
+  document.getElementById('modal-materia-titulo').textContent = 'Editar materia';
+  openModal('modal-materia');
 }
 
 async function eliminarMateria(id) {
-  if (!confirm('Eliminar materia?')) return;
+  if (!confirm('Eliminar materia? Se eliminaran las secciones asociadas.')) return;
   await db.from('materias').delete().eq('id', id);
   showToast('Materia eliminada', 'success');
   await cargarSeccionesYMaterias();
   _loaded['config'] = false; await renderConfig();
 }
 
-async function nuevaSeccion() {
-  const nombre = prompt('Nombre de la seccion (ej: 1A):');
-  if (!nombre?.trim()) return;
-  const materiaId = prompt('ID de la materia (dejalo vacio si no sabes):') || null;
-  await db.from('secciones').insert({ nombre: nombre.trim(), anio: 1, materia_id: materiaId || null });
-  showToast('Seccion creada', 'success');
-  await cargarSeccionesYMaterias();
-  _loaded['config'] = false; await renderConfig();
+function nuevaSeccion() {
+  document.getElementById('seccion-id').value = '';
+  document.getElementById('seccion-nombre').value = '';
+  document.getElementById('seccion-anio').value = '1';
+  document.getElementById('seccion-materia').innerHTML = `<option value="">-- Sin materia --</option>${materiaOptions()}`;
+  document.getElementById('modal-seccion-titulo').textContent = 'Nueva seccion';
+  openModal('modal-seccion');
+}
+
+async function editarSeccion(id) {
+  const s = _SECCIONES.find(s => s.id === id);
+  if (!s) return;
+  document.getElementById('seccion-id').value = s.id;
+  document.getElementById('seccion-nombre').value = s.nombre;
+  document.getElementById('seccion-anio').value = s.anio || 1;
+  document.getElementById('seccion-materia').innerHTML = `<option value="">-- Sin materia --</option>${materiaOptions(s.materia_id)}`;
+  document.getElementById('modal-seccion-titulo').textContent = 'Editar seccion';
+  openModal('modal-seccion');
+}
+
+async function submitSeccion() {
+  const id       = document.getElementById('seccion-id').value;
+  const nombre   = document.getElementById('seccion-nombre').value.trim();
+  const anio     = parseInt(document.getElementById('seccion-anio').value) || 1;
+  const materia  = document.getElementById('seccion-materia').value;
+  if (!nombre) { showToast('Escribe el nombre', 'error'); return; }
+  const btn = document.getElementById('btn-submit-seccion');
+  btn.disabled = true;
+  try {
+    const payload = { nombre, anio, materia_id: materia || null };
+    if (id) {
+      await db.from('secciones').update(payload).eq('id', id);
+      showToast('Seccion actualizada', 'success');
+    } else {
+      await db.from('secciones').insert(payload);
+      showToast('Seccion creada', 'success');
+    }
+    closeModal('modal-seccion');
+    await cargarSeccionesYMaterias();
+    _loaded['config'] = false; await renderConfig();
+  } catch (err) {
+    showToast('Error al guardar', 'error');
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 async function eliminarSeccion(id) {
