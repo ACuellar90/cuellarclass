@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CuellarClass — Mi Clase</title>
+  <link rel="stylesheet" href="/src/css/main.css">
+</head>
+<body>
+<div class="app-layout">
+
+  <!-- Sidebar overlay mobile -->
+  <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-text">CuellarClass</div>
+      <div class="logo-sub">Mi Clase</div>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="sidebar-section">Menu</div>
+      <div class="nav-item active" data-tab="inicio" onclick="mostrarTab('inicio')">
+        <span class="nav-icon">🏠</span> Inicio
+      </div>
+      <div class="nav-item" data-tab="tareas" onclick="mostrarTab('tareas')">
+        <span class="nav-icon">📋</span> Tareas
+      </div>
+      <div class="nav-item" data-tab="examenes" onclick="mostrarTab('examenes')">
+        <span class="nav-icon">📝</span> Examenes
+      </div>
+      <div class="nav-item" data-tab="encuestas" onclick="mostrarTab('encuestas')">
+        <span class="nav-icon">📊</span> Encuestas
+      </div>
+      <div class="nav-item" data-tab="foro" onclick="mostrarTab('foro')">
+        <span class="nav-icon">💬</span> Foro de Dudas
+      </div>
+      <div class="nav-item" data-tab="notas" onclick="mostrarTab('notas')">
+        <span class="nav-icon">⭐</span> Mis Notas
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user" onclick="logout()">
+        <div id="sidebar-avatar"></div>
+        <div>
+          <div class="user-name" id="sidebar-name">Cargando...</div>
+          <div class="user-role" id="sidebar-role">Alumno</div>
+        </div>
+        <span style="margin-left:auto;color:var(--gray-500);font-size:14px">↗</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main-content">
+    <div class="topbar">
+      <div class="flex gap-2" style="align-items:center">
+        <div class="hamburger" id="hamburger">
+          <span></span><span></span><span></span>
+        </div>
+        <div class="topbar-title" id="topbar-titulo">CuellarClass</div>
+      </div>
+      <div class="topbar-actions">
+        <span style="font-size:14px;color:var(--gray-500)">Hola, <strong id="user-display-name"></strong></span>
+        <button class="btn btn-ghost btn-sm" onclick="logout()">Salir</button>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div id="section-inicio"  class="page-section"></div>
+      <div id="section-tareas"  class="page-section hidden"></div>
+      <div id="section-examenes" class="page-section hidden"></div>
+      <div id="section-encuestas" class="page-section hidden"></div>
+      <div id="section-foro"    class="page-section hidden"></div>
+      <div id="section-notas"   class="page-section hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Entregar tarea -->
+<div id="modal-entrega" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-entrega-titulo">Entregar Tarea</h3>
+      <button class="modal-close" onclick="closeModal('modal-entrega')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="entrega-tarea-id">
+      <div class="form-group mb-2">
+        <label class="form-label">Comentario / Respuesta</label>
+        <textarea id="entrega-texto" class="form-textarea" placeholder="Escribe tu respuesta o comentario..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Archivo adjunto (opcional)</label>
+        <input type="file" id="entrega-archivo" class="form-input" accept="image/*,.pdf,.doc,.docx">
+        <span class="form-hint">Imagen, PDF o documento Word</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-entrega')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-submit-entrega" onclick="submitEntrega()">Entregar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Ver entrega / Notas -->
+<div id="modal-ver-entrega" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Detalle</h3>
+      <button class="modal-close" onclick="closeModal('modal-ver-entrega')">✕</button>
+    </div>
+    <div class="modal-body" id="ver-entrega-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-ver-entrega')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Encuesta -->
+<div id="modal-encuesta" class="modal-overlay hidden">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3 id="modal-encuesta-titulo">Encuesta</h3>
+      <button class="modal-close" onclick="closeModal('modal-encuesta')">✕</button>
+    </div>
+    <div class="modal-body" id="modal-encuesta-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-encuesta')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-enviar-encuesta">Enviar respuestas</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Nuevo post foro -->
+<div id="modal-nuevo-post" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Nueva pregunta</h3>
+      <button class="modal-close" onclick="closeModal('modal-nuevo-post')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group mb-2">
+        <label class="form-label">Titulo de tu duda</label>
+        <input type="text" id="nuevo-post-titulo" class="form-input" placeholder="Ej: Como se declara una variable en Python?">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descripcion</label>
+        <textarea id="nuevo-post-contenido" class="form-textarea" placeholder="Explica tu duda con detalle..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-nuevo-post')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-submit-post" onclick="submitPost()">Publicar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Post detalle -->
+<div id="modal-post-detail" class="modal-overlay hidden">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3 id="post-detail-titulo"></h3>
+      <button class="modal-close" onclick="closeModal('modal-post-detail')">✕</button>
+    </div>
+    <div class="modal-body" id="post-detail-body"></div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
+<script src="/src/js/config.js"></script>
+<script src="/src/js/dashboard.js"></script>
+</body>
+</html>

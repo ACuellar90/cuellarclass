@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CuellarClass — Admin</title>
+  <link rel="stylesheet" href="/src/css/main.css">
+</head>
+<body>
+<div class="app-layout">
+
+  <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-text">CuellarClass</div>
+      <div class="logo-sub">Panel Docente</div>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="sidebar-section">Principal</div>
+      <div class="nav-item active" data-tab="dashboard" onclick="mostrarTab('dashboard')">
+        <span class="nav-icon">📊</span> Dashboard
+      </div>
+      <div class="nav-item" data-tab="alumnos" onclick="mostrarTab('alumnos')">
+        <span class="nav-icon">👨‍🎓</span> Alumnos
+      </div>
+      <div class="sidebar-section">Contenido</div>
+      <div class="nav-item" data-tab="tareas" onclick="mostrarTab('tareas')">
+        <span class="nav-icon">📋</span> Tareas
+      </div>
+      <div class="nav-item" data-tab="examenes" onclick="mostrarTab('examenes')">
+        <span class="nav-icon">📝</span> Examenes
+      </div>
+      <div class="nav-item" data-tab="encuestas" onclick="mostrarTab('encuestas')">
+        <span class="nav-icon">📊</span> Encuestas
+      </div>
+      <div class="nav-item" data-tab="foro" onclick="mostrarTab('foro')">
+        <span class="nav-icon">💬</span> Foro
+      </div>
+      <div class="sidebar-section">Sistema</div>
+      <div class="nav-item" data-tab="config" onclick="mostrarTab('config')">
+        <span class="nav-icon">⚙️</span> Configuracion
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div id="sidebar-avatar"></div>
+        <div>
+          <div class="user-name" id="sidebar-name">Docente</div>
+          <div class="user-role">Administrador</div>
+        </div>
+        <button class="btn btn-ghost btn-icon" onclick="logout()" title="Salir" style="margin-left:auto;color:var(--gray-300)">↗</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="main-content">
+    <div class="topbar">
+      <div class="flex gap-2" style="align-items:center">
+        <div class="hamburger" id="hamburger"><span></span><span></span><span></span></div>
+        <div class="topbar-title" id="topbar-titulo">Dashboard</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="logout()">Salir</button>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div id="section-dashboard"  class="page-section"></div>
+      <div id="section-alumnos"    class="page-section hidden"></div>
+      <div id="section-tareas"     class="page-section hidden"></div>
+      <div id="section-examenes"   class="page-section hidden"></div>
+      <div id="section-encuestas"  class="page-section hidden"></div>
+      <div id="section-foro"       class="page-section hidden"></div>
+      <div id="section-config"     class="page-section hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================================
+     MODALES
+     ======================================================== -->
+
+<!-- Modal: Alumno -->
+<div id="modal-alumno" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-alumno-titulo">Nuevo alumno</h3>
+      <button class="modal-close" onclick="closeModal('modal-alumno')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="alumno-id">
+      <div class="grid-2 gap-2 mb-2">
+        <div class="form-group">
+          <label class="form-label">Nombre completo *</label>
+          <input type="text" id="alumno-nombre" class="form-input" placeholder="Juan Perez">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Correo *</label>
+          <input type="email" id="alumno-email" class="form-input" placeholder="juan@idsje.edu.sv">
+        </div>
+      </div>
+      <div class="grid-2 gap-2 mb-2">
+        <div class="form-group">
+          <label class="form-label">Contrasena *</label>
+          <input type="text" id="alumno-pass" class="form-input" placeholder="alumno2026">
+          <span class="form-hint">Dejar vacio para no cambiar (edicion)</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Seccion</label>
+          <select id="alumno-seccion" class="form-select">
+            <option value="">-- Seleccionar --</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Foto de perfil</label>
+        <input type="file" id="alumno-foto" class="form-input" accept="image/*" onchange="previewFoto()">
+        <div id="alumno-foto-preview" style="margin-top:8px"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-alumno')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-submit-alumno" onclick="submitAlumno()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Importar alumnos -->
+<div id="modal-importar" class="modal-overlay hidden">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3>Importar alumnos</h3>
+      <button class="modal-close" onclick="closeModal('modal-importar')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:14px;color:var(--gray-500);margin-bottom:16px">
+        Pega una lista con el formato: <code>Nombre Apellido [Tab o Coma] correo@ejemplo.com</code> — una fila por alumno.
+        La contrasena por defecto sera <strong>alumno2026</strong>.
+      </p>
+      <div class="form-group mb-2">
+        <label class="form-label">Seccion destino</label>
+        <select id="import-seccion" class="form-select"></select>
+      </div>
+      <div class="form-group mb-2">
+        <label class="form-label">Lista de alumnos</label>
+        <textarea id="import-texto" class="form-textarea" style="min-height:140px;font-family:monospace;font-size:13px"
+          placeholder="Juan Antonio Perez&#9;juan@correo.com&#10;Maria Lopez&#9;maria@correo.com"></textarea>
+      </div>
+      <button class="btn btn-secondary" onclick="procesarImport()">Vista previa</button>
+      <div id="import-preview" class="mt-2"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-importar')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Tarea -->
+<div id="modal-tarea" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-tarea-titulo">Nueva tarea</h3>
+      <button class="modal-close" onclick="closeModal('modal-tarea')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="tarea-id">
+      <div class="form-group mb-2">
+        <label class="form-label">Titulo *</label>
+        <input type="text" id="tarea-titulo" class="form-input" placeholder="Ej: Tarea 1 - Estructuras de datos">
+      </div>
+      <div class="form-group mb-2">
+        <label class="form-label">Descripcion / Instrucciones</label>
+        <textarea id="tarea-desc" class="form-textarea" placeholder="Describe la tarea..."></textarea>
+      </div>
+      <div class="grid-2 gap-2 mb-2">
+        <div class="form-group">
+          <label class="form-label">Seccion</label>
+          <select id="tarea-seccion" class="form-select"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha de entrega</label>
+          <input type="datetime-local" id="tarea-fecha" class="form-input">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nota maxima</label>
+        <input type="number" id="tarea-nota" class="form-input" value="10" min="1" max="100" step="0.5" style="max-width:120px">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-tarea')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-submit-tarea" onclick="submitTarea()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Examen -->
+<div id="modal-examen" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-examen-titulo">Nuevo examen</h3>
+      <button class="modal-close" onclick="closeModal('modal-examen')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="examen-id">
+      <div class="form-group mb-2">
+        <label class="form-label">Titulo *</label>
+        <input type="text" id="examen-titulo" class="form-input" placeholder="Ej: Examen Parcial 1 — Python">
+      </div>
+      <div class="form-group mb-2">
+        <label class="form-label">Descripcion</label>
+        <textarea id="examen-desc" class="form-textarea" style="min-height:70px" placeholder="Instrucciones para el alumno..."></textarea>
+      </div>
+      <div class="grid-2 gap-2 mb-2">
+        <div class="form-group">
+          <label class="form-label">Seccion</label>
+          <select id="examen-seccion" class="form-select"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tiempo limite (minutos)</label>
+          <input type="number" id="examen-tiempo" class="form-input" placeholder="Ej: 45 (vacio = sin limite)" min="1">
+        </div>
+      </div>
+      <div class="grid-2 gap-2 mb-2">
+        <div class="form-group">
+          <label class="form-label">Preguntas por intento</label>
+          <input type="number" id="examen-preguntas" class="form-input" value="10" min="1">
+          <span class="form-hint">Se seleccionan aleatoriamente del banco</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Intentos maximos</label>
+          <input type="number" id="examen-intentos" class="form-input" value="1" min="1">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nota maxima</label>
+        <input type="number" id="examen-nota" class="form-input" value="10" min="1" step="0.5" style="max-width:120px">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-examen')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-submit-examen" onclick="submitExamen()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Banco de preguntas -->
+<div id="modal-banco" class="modal-overlay hidden">
+  <div class="modal modal-xl">
+    <div class="modal-header">
+      <div>
+        <h3 id="banco-titulo">Banco de preguntas</h3>
+        <span class="badge badge-gold mt-1" id="banco-count">0 preguntas</span>
+      </div>
+      <button class="modal-close" onclick="closeModal('modal-banco')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="flex gap-1 mb-3">
+        <button class="btn btn-primary btn-sm" onclick="abrirFormPregunta('opcion_multiple')">+ Opcion multiple</button>
+        <button class="btn btn-secondary btn-sm" onclick="abrirFormPregunta('verdadero_falso')">+ Verdadero/Falso</button>
+        <button class="btn btn-outline btn-sm" onclick="abrirFormPregunta('respuesta_corta')">+ Respuesta corta</button>
+      </div>
+      <div id="banco-lista"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-banco')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Pregunta -->
+<div id="modal-pregunta" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Agregar pregunta</h3>
+      <button class="modal-close" onclick="closeModal('modal-pregunta')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="pregunta-id">
+      <div class="form-group mb-2">
+        <label class="form-label">Tipo</label>
+        <select id="pregunta-tipo" class="form-select" onchange="cambiarTipoPregunta(this.value)">
+          <option value="opcion_multiple">Opcion multiple</option>
+          <option value="verdadero_falso">Verdadero / Falso</option>
+          <option value="respuesta_corta">Respuesta corta</option>
+        </select>
+      </div>
+      <div class="form-group mb-2">
+        <label class="form-label">Enunciado *</label>
+        <textarea id="pregunta-enunciado" class="form-textarea" style="min-height:80px" placeholder="Escribe la pregunta..."></textarea>
+      </div>
+      <div class="form-group mb-2">
+        <label class="form-label">Puntaje</label>
+        <input type="number" id="pregunta-puntaje" class="form-input" value="1" min="0.5" step="0.5" style="max-width:100px">
+      </div>
+
+      <!-- Opciones dinamicas -->
+      <div id="opciones-container"></div>
+
+      <!-- Respuesta corta -->
+      <div id="rc-container" class="hidden">
+        <div class="form-group mb-2">
+          <label class="form-label">Respuesta correcta</label>
+          <input type="text" id="rc-texto" class="form-input" placeholder="Ej: variable">
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer">
+          <input type="checkbox" id="rc-exacta" style="accent-color:var(--gold)">
+          Coincidencia exacta (distingue mayusculas)
+        </label>
+        <span class="form-hint mt-1">Desmarcado = acepta si la respuesta contiene el texto clave</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-pregunta')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-submit-pregunta" onclick="submitPregunta()">Guardar pregunta</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Encuesta form -->
+<div id="modal-encuesta-form" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Encuesta</h3>
+      <button class="modal-close" onclick="closeModal('modal-encuesta-form')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="enc-id">
+      <div class="form-group mb-2">
+        <label class="form-label">Titulo *</label>
+        <input type="text" id="enc-titulo" class="form-input" placeholder="Ej: Encuesta de fin de unidad">
+      </div>
+      <div class="form-group mb-2">
+        <label class="form-label">Descripcion</label>
+        <textarea id="enc-desc" class="form-textarea" style="min-height:70px" placeholder="Descripcion de la encuesta..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Seccion</label>
+        <select id="enc-seccion" class="form-select"></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-encuesta-form')">Cancelar</button>
+      <button class="btn btn-primary" onclick="submitEncuestaForm()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Ver entrega generico -->
+<div id="modal-ver-entrega" class="modal-overlay hidden">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3>Detalle</h3>
+      <button class="modal-close" onclick="closeModal('modal-ver-entrega')">✕</button>
+    </div>
+    <div class="modal-body" id="ver-entrega-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-ver-entrega')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Post detalle -->
+<div id="modal-post-detail" class="modal-overlay hidden">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3 id="post-detail-titulo"></h3>
+      <button class="modal-close" onclick="closeModal('modal-post-detail')">✕</button>
+    </div>
+    <div class="modal-body" id="post-detail-body"></div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
+<script src="/src/js/config.js"></script>
+<script src="/src/js/admin.js"></script>
+</body>
+</html>

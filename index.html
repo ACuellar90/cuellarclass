@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CuellarClass — Ingresar</title>
+  <link rel="stylesheet" href="/src/css/main.css">
+</head>
+<body>
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-main">Cuell<span class="logo-accent">ar</span>Class</div>
+      <div class="logo-tagline">Plataforma educativa · Instituto Diocesano</div>
+    </div>
+
+    <form id="login-form" autocomplete="off">
+      <div class="form-group mb-2">
+        <label class="form-label" for="login-email">Correo electronico</label>
+        <div class="input-group">
+          <span class="input-icon">✉</span>
+          <input type="email" id="login-email" class="form-input" placeholder="correo@ejemplo.com" required>
+        </div>
+      </div>
+
+      <div class="form-group mb-2">
+        <label class="form-label" for="login-pass">Contrasena</label>
+        <div class="input-group" style="position:relative">
+          <span class="input-icon">🔒</span>
+          <input type="password" id="login-pass" class="form-input" placeholder="Tu contrasena" required>
+          <button type="button" id="toggle-pass" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--gray-300);font-size:16px">👁</button>
+        </div>
+      </div>
+
+      <div id="login-error" class="form-error mb-2"></div>
+
+      <button type="submit" id="btn-login" class="btn btn-primary w-100" style="justify-content:center;padding:12px">
+        Ingresar
+      </button>
+    </form>
+
+    <div class="login-divider">CuellarClass v1.0</div>
+    <p style="text-align:center;font-size:12px;color:var(--gray-500)">
+      Si olvidaste tu contrasena, consulta con el docente.
+    </p>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
+<script src="/src/js/config.js"></script>
+<script src="/src/js/auth.js"></script>
+</body>
+</html>

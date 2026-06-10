@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CuellarClass — Examen</title>
+  <link rel="stylesheet" href="/src/css/main.css">
+  <style>
+    body { background: var(--off-white); }
+    .exam-topbar {
+      background: var(--navy);
+      padding: 14px 28px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 50;
+    }
+    .exam-topbar .logo { font-family: var(--font-display); color: var(--gold); font-size: 1.1rem; }
+    .exam-topbar .alumno { color: rgba(255,255,255,.7); font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<!-- SALA DE EXAMEN -->
+<div id="sala-examen">
+  <div class="exam-topbar">
+    <div class="logo">CuellarClass</div>
+    <div class="alumno" id="alumno-nombre"></div>
+  </div>
+
+  <div class="exam-room">
+    <div id="exam-timer" class="exam-timer" id="timer-wrap">
+      <div>
+        <div class="label" style="color:rgba(255,255,255,.5)">Tiempo restante</div>
+        <div class="time-display" id="timer-display">--:--</div>
+      </div>
+      <div style="text-align:right">
+        <div style="color:var(--white);font-family:var(--font-display);font-size:1.2rem" id="examen-titulo">Cargando...</div>
+        <div style="color:rgba(255,255,255,.5);font-size:12px" id="examen-info"></div>
+      </div>
+    </div>
+
+    <div id="preguntas-container">
+      <div class="flex-center" style="padding:60px">
+        <div class="spinner"></div>
+      </div>
+    </div>
+
+    <div class="exam-progress">
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+      </div>
+      <span style="font-size:13px;color:var(--gray-500);white-space:nowrap" id="progress-text">0 respondidas</span>
+      <button class="btn btn-primary" onclick="confirmarEntrega()">Entregar examen</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTADO FINAL -->
+<div id="resultado-final" class="hidden">
+  <div class="exam-topbar">
+    <div class="logo">CuellarClass</div>
+    <span class="badge badge-green">Examen completado</span>
+  </div>
+  <div class="exam-room">
+    <div id="resultado-body"></div>
+    <div style="text-align:center;margin-top:24px">
+      <button class="btn btn-primary" onclick="volverDashboard()">Volver al inicio</button>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="/src/js/config.js"></script>
+<script src="/src/js/examen.js"></script>
+</body>
+</html>
