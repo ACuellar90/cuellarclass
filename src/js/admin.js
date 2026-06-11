@@ -92,50 +92,364 @@ async function loadSection(tab) {
 async function renderDashboard() {
   const el = document.getElementById('section-dashboard');
 
-  const [
-    { count: totalAlumnos },
-    { count: totalTareas },
-    { count: totalExamenes },
-    { count: totalPosts },
-    { data: tareasPend },
-  ] = await Promise.all([
-    db.from('usuarios').select('*',{count:'exact',head:true}).eq('rol','alumno').eq('activo',true),
-    db.from('tareas').select('*',{count:'exact',head:true}).eq('activo',true),
-    db.from('examenes').select('*',{count:'exact',head:true}).eq('activo',true),
-    db.from('foro_posts').select('*',{count:'exact',head:true}),
-    db.from('entregas_tareas').select('*, tareas(titulo), usuarios(nombre)')
-      .eq('calificado',false).order('fecha_entrega',{ascending:false}).limit(8),
-  ]);
+  // Si es superadmin, mostrar vista global
+  if (SESSION.es_admin) {
+    const [
+      { count: totalAlumnos },
+      { count: totalTareas },
+      { count: totalExamenes },
+      { count: totalPosts },
+      { data: tareasPend },
+    ] = await Promise.all([
+      db.from('usuarios').select('*',{count:'exact',head:true}).eq('rol','alumno').eq('activo',true),
+      db.from('tareas').select('*',{count:'exact',head:true}).eq('activo',true),
+      db.from('examenes').select('*',{count:'exact',head:true}).eq('activo',true),
+      db.from('foro_posts').select('*',{count:'exact',head:true}),
+      db.from('entregas_tareas').select('*, tareas(titulo), usuarios(nombre)')
+        .eq('calificado',false).order('fecha_entrega',{ascending:false}).limit(8),
+    ]);
+
+    el.innerHTML = `
+      <div class="page-header"><h2>Dashboard</h2><p>Bienvenido, ${SESSION.nombre.split(' ')[0]}</p></div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-icon">👨‍🎓</div><div class="stat-value">${totalAlumnos||0}</div><div class="stat-label">Alumnos activos</div></div>
+        <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-value">${totalTareas||0}</div><div class="stat-label">Tareas activas</div></div>
+        <div class="stat-card" style="border-left-color:#3b82f6"><div class="stat-icon">📝</div><div class="stat-value">${totalExamenes||0}</div><div class="stat-label">Examenes activos</div></div>
+        <div class="stat-card" style="border-left-color:#3dba7f"><div class="stat-icon">💬</div><div class="stat-value">${totalPosts||0}</div><div class="stat-label">Posts en foro</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3>Entregas pendientes de calificar</h3>
+          <span class="badge badge-gold">${tareasPend?.length || 0}</span>
+        </div>
+        <div class="card-body">
+          ${!tareasPend || tareasPend.length === 0
+            ? '<p class="text-gray" style="font-size:14px">No hay entregas pendientes.</p>'
+            : `<div class="table-wrap"><table>
+                <thead><tr><th>Alumno</th><th>Tarea</th><th>Fecha entrega</th><th></th></tr></thead>
+                <tbody>${tareasPend.map(e => `
+                  <tr>
+                    <td>${e.usuarios?.nombre || '—'}</td>
+                    <td>${e.tareas?.titulo || '—'}</td>
+                    <td>${formatFechaHora(e.fecha_entrega)}</td>
+                    <td><button class="btn btn-sm btn-primary" onclick="abrirCalificarEntrega('${e.id}')">Calificar</button></td>
+                  </tr>`).join('')}
+                </tbody></table></div>`
+          }
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  // Vista docente — mostrar secciones de su materia como burbujas
+  const secciones = _SECCIONES.filter(s => s.materia_id === SESSION.materia_id);
+
+  // Contar alumnos por seccion
+  const conteosPromises = secciones.map(s =>
+    db.from('usuarios').select('*',{count:'exact',head:true}).eq('rol','alumno').eq('activo',true).eq('seccion_id', s.id)
+  );
+  const conteos = await Promise.all(conteosPromises);
+
+  // Entregas pendientes de su materia
+  const { data: tareasPend } = await db
+    .from('entregas_tareas')
+    .select('*, tareas(titulo, materia_id), usuarios(nombre)')
+    .eq('calificado', false)
+    .order('fecha_entrega', { ascending: false })
+    .limit(8);
+
+  const pendFiltradas = (tareasPend || []).filter(e => e.tareas?.materia_id === SESSION.materia_id);
 
   el.innerHTML = `
-    <div class="page-header"><h2>Dashboard</h2><p>Bienvenido, ${SESSION.nombre.split(' ')[0]}</p></div>
-    <div class="stats-grid">
-      <div class="stat-card"><div class="stat-icon">👨‍🎓</div><div class="stat-value">${totalAlumnos||0}</div><div class="stat-label">Alumnos activos</div></div>
-      <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-value">${totalTareas||0}</div><div class="stat-label">Tareas activas</div></div>
-      <div class="stat-card" style="border-left-color:#3b82f6"><div class="stat-icon">📝</div><div class="stat-value">${totalExamenes||0}</div><div class="stat-label">Examenes activos</div></div>
-      <div class="stat-card" style="border-left-color:#3dba7f"><div class="stat-icon">💬</div><div class="stat-value">${totalPosts||0}</div><div class="stat-label">Posts en foro</div></div>
+    <div class="page-header">
+      <h2>Mis Secciones</h2>
+      <p>Bienvenido, ${SESSION.nombre.split(' ')[0]} — ${_MATERIAS.find(m => m.id === SESSION.materia_id)?.nombre || ''}</p>
     </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:20px;margin-bottom:28px">
+      ${secciones.length === 0
+        ? '<p class="text-gray">No tienes secciones asignadas aun.</p>'
+        : secciones.map((s, i) => `
+          <div onclick="abrirSeccion('${s.id}','${s.nombre}')"
+            style="background:var(--navy);border-radius:var(--radius-lg);padding:28px 24px;cursor:pointer;
+                   transition:var(--transition);text-align:center;position:relative;overflow:hidden;"
+            onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='var(--shadow-lg)'"
+            onmouseout="this.style.transform='none';this.style.boxShadow='none'">
+            <div style="position:absolute;top:0;right:0;width:80px;height:80px;
+                        background:rgba(212,175,55,.08);border-radius:50%;transform:translate(20px,-20px)"></div>
+            <div style="font-size:3rem;font-family:var(--font-display);color:var(--gold);font-weight:700;line-height:1">
+              ${s.nombre}
+            </div>
+            <div style="color:rgba(255,255,255,.6);font-size:13px;margin-top:8px">
+              ${conteos[i]?.count || 0} alumnos
+            </div>
+            <div style="margin-top:16px;display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
+              <span style="background:rgba(212,175,55,.15);color:var(--gold);font-size:11px;padding:3px 10px;border-radius:99px;font-weight:600">Ver sección →</span>
+            </div>
+          </div>`).join('')}
+    </div>
+
+    ${pendFiltradas.length > 0 ? `
     <div class="card">
       <div class="card-header">
         <h3>Entregas pendientes de calificar</h3>
-        <span class="badge badge-gold">${tareasPend?.length || 0}</span>
+        <span class="badge badge-gold">${pendFiltradas.length}</span>
       </div>
       <div class="card-body">
-        ${!tareasPend || tareasPend.length === 0
-          ? '<p class="text-gray" style="font-size:14px">No hay entregas pendientes.</p>'
-          : `<div class="table-wrap"><table>
-              <thead><tr><th>Alumno</th><th>Tarea</th><th>Fecha entrega</th><th></th></tr></thead>
-              <tbody>${tareasPend.map(e => `
-                <tr>
-                  <td>${e.usuarios?.nombre || '—'}</td>
-                  <td>${e.tareas?.titulo || '—'}</td>
-                  <td>${formatFechaHora(e.fecha_entrega)}</td>
-                  <td><button class="btn btn-sm btn-primary" onclick="abrirCalificarEntrega('${e.id}')">Calificar</button></td>
-                </tr>`).join('')}
-              </tbody></table></div>`
-        }
+        <div class="table-wrap"><table>
+          <thead><tr><th>Alumno</th><th>Tarea</th><th>Fecha</th><th></th></tr></thead>
+          <tbody>${pendFiltradas.map(e => `
+            <tr>
+              <td>${e.usuarios?.nombre || '—'}</td>
+              <td>${e.tareas?.titulo || '—'}</td>
+              <td>${formatFechaHora(e.fecha_entrega)}</td>
+              <td><button class="btn btn-sm btn-primary" onclick="abrirCalificarEntrega('${e.id}')">Calificar</button></td>
+            </tr>`).join('')}
+          </tbody></table></div>
+      </div>
+    </div>` : ''}
+  `;
+}
+
+// ── VISTA DE SECCION ───────────────────────────────────────
+let _seccionActiva = null;
+
+async function abrirSeccion(seccionId, nombre) {
+  _seccionActiva = seccionId;
+
+  // Mostrar seccion-detalle
+  document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden'));
+  let secEl = document.getElementById('section-detalle');
+  if (!secEl) {
+    secEl = document.createElement('div');
+    secEl.id = 'section-detalle';
+    secEl.className = 'page-section';
+    document.querySelector('.page-body').appendChild(secEl);
+  }
+  secEl.classList.remove('hidden');
+  document.getElementById('topbar-titulo').textContent = `Sección ${nombre}`;
+
+  secEl.innerHTML = `
+    <div class="page-header flex-between">
+      <div>
+        <button class="btn btn-ghost btn-sm" onclick="volverDashboard()" style="margin-bottom:8px">← Volver</button>
+        <h2>Sección ${nombre}</h2>
       </div>
     </div>
+    <div class="tabs" id="tabs-seccion">
+      <button class="tab-btn active" data-tab="tab-alumnos-sec" onclick="tabSeccion(this,'tab-alumnos-sec')">👨‍🎓 Alumnos</button>
+      <button class="tab-btn" data-tab="tab-tareas-sec" onclick="tabSeccion(this,'tab-tareas-sec')">📋 Tareas</button>
+      <button class="tab-btn" data-tab="tab-examenes-sec" onclick="tabSeccion(this,'tab-examenes-sec')">📝 Examenes</button>
+      <button class="tab-btn" data-tab="tab-encuestas-sec" onclick="tabSeccion(this,'tab-encuestas-sec')">📊 Encuestas</button>
+      <button class="tab-btn" data-tab="tab-foro-sec" onclick="tabSeccion(this,'tab-foro-sec')">💬 Foro</button>
+    </div>
+    <div id="tab-alumnos-sec" class="tab-content active"></div>
+    <div id="tab-tareas-sec" class="tab-content"></div>
+    <div id="tab-examenes-sec" class="tab-content"></div>
+    <div id="tab-encuestas-sec" class="tab-content"></div>
+    <div id="tab-foro-sec" class="tab-content"></div>
+  `;
+
+  await cargarTabSeccion('tab-alumnos-sec');
+}
+
+function volverDashboard() {
+  _seccionActiva = null;
+  document.getElementById('section-detalle')?.classList.add('hidden');
+  document.getElementById('section-dashboard').classList.remove('hidden');
+  document.getElementById('topbar-titulo').textContent = 'Dashboard';
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelector('[data-tab="dashboard"]')?.classList.add('active');
+}
+
+function tabSeccion(btn, tabId) {
+  document.querySelectorAll('#tabs-seccion .tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#section-detalle .tab-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+  cargarTabSeccion(tabId);
+}
+
+const _loadedTabs = {};
+async function cargarTabSeccion(tabId) {
+  if (_loadedTabs[tabId + _seccionActiva]) return;
+  _loadedTabs[tabId + _seccionActiva] = true;
+  switch (tabId) {
+    case 'tab-alumnos-sec':   await renderAlumnosSeccion(); break;
+    case 'tab-tareas-sec':    await renderTareasSeccion(); break;
+    case 'tab-examenes-sec':  await renderExamenesSeccion(); break;
+    case 'tab-encuestas-sec': await renderEncuestasSeccion(); break;
+    case 'tab-foro-sec':      await renderForoSeccion(); break;
+  }
+}
+
+async function renderAlumnosSeccion() {
+  const el = document.getElementById('tab-alumnos-sec');
+  const { data: alumnos } = await db.from('usuarios').select('*, secciones(nombre)').eq('rol','alumno').eq('activo',true).eq('seccion_id', _seccionActiva).order('nombre');
+
+  el.innerHTML = `
+    <div class="flex-between mb-3">
+      <span class="label">${alumnos?.length || 0} alumnos</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Alumno</th><th>Email</th><th></th></tr></thead>
+        <tbody>
+          ${!alumnos || alumnos.length === 0
+            ? '<tr><td colspan="3" class="text-gray" style="padding:20px">Sin alumnos en esta seccion.</td></tr>'
+            : alumnos.map(a => `
+              <tr>
+                <td><div class="flex gap-1" style="align-items:center">${renderAvatar(a.foto_url, a.nombre, 32)}<span class="fw-600">${a.nombre}</span></div></td>
+                <td class="text-gray">${a.email}</td>
+                <td><button class="btn btn-sm btn-ghost" onclick="verNotasAlumno('${a.id}','${a.nombre}')">📊 Notas</button></td>
+              </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function renderTareasSeccion() {
+  const el = document.getElementById('tab-tareas-sec');
+  const { data: tareas } = await db.from('tareas').select('*').eq('seccion_id', _seccionActiva).eq('activo', true).order('creado_at', { ascending: false });
+
+  el.innerHTML = `
+    <div class="flex-between mb-3">
+      <span class="label">${tareas?.length || 0} tareas</span>
+      <button class="btn btn-primary btn-sm" onclick="abrirNuevaTareaSeccion()">+ Nueva tarea</button>
+    </div>
+    ${!tareas || tareas.length === 0
+      ? '<div class="empty-state"><div class="empty-icon">📋</div><h3>Sin tareas</h3></div>'
+      : tareas.map(t => `
+        <div class="activity-card mb-2">
+          <div class="flex-between">
+            <div class="activity-title">${t.titulo}</div>
+            <div class="flex gap-1">
+              <span class="text-gray" style="font-size:12px">${t.fecha_entrega ? formatFecha(t.fecha_entrega) : 'Sin fecha'}</span>
+              <button class="btn btn-sm btn-ghost" onclick="verEntregasTarea('${t.id}','${t.titulo}')">📬 Calificar</button>
+              <button class="btn btn-sm btn-ghost" onclick="editarTarea('${t.id}')">✏️</button>
+            </div>
+          </div>
+          <p style="font-size:13px;color:var(--gray-500);margin-top:6px">${t.descripcion || ''}</p>
+        </div>`).join('')}
+  `;
+}
+
+function abrirNuevaTareaSeccion() {
+  document.getElementById('modal-tarea-titulo').textContent = 'Nueva tarea';
+  document.getElementById('tarea-id').value = '';
+  document.getElementById('tarea-titulo').value = '';
+  document.getElementById('tarea-desc').value = '';
+  document.getElementById('tarea-fecha').value = '';
+  document.getElementById('tarea-nota').value = '10';
+  document.getElementById('tarea-seccion').innerHTML = `<option value="${_seccionActiva}" selected>${_SECCIONES.find(s=>s.id===_seccionActiva)?.nombre || ''}</option>`;
+  openModal('modal-tarea');
+}
+
+async function renderExamenesSeccion() {
+  const el = document.getElementById('tab-examenes-sec');
+  const { data: examenes } = await db.from('examenes').select('*').eq('seccion_id', _seccionActiva).order('creado_at', { ascending: false });
+
+  el.innerHTML = `
+    <div class="flex-between mb-3">
+      <span class="label">${examenes?.length || 0} examenes</span>
+      <button class="btn btn-primary btn-sm" onclick="abrirNuevoExamenSeccion()">+ Nuevo examen</button>
+    </div>
+    ${!examenes || examenes.length === 0
+      ? '<div class="empty-state"><div class="empty-icon">📝</div><h3>Sin examenes</h3></div>'
+      : examenes.map(ex => `
+        <div class="card mb-2">
+          <div class="card-header">
+            <div>
+              <h3>${ex.titulo}</h3>
+              ${ex.activo ? '<span class="badge badge-green">Activo</span>' : '<span class="badge badge-gray">Inactivo</span>'}
+            </div>
+            <div class="flex gap-1">
+              <button class="btn btn-sm btn-${ex.activo ? 'secondary' : 'primary'}" onclick="toggleExamen('${ex.id}',${ex.activo})">${ex.activo ? 'Desactivar' : 'Activar'}</button>
+              <button class="btn btn-sm btn-ghost" onclick="abrirBancoPreguntas('${ex.id}','${ex.titulo}')">📚 Banco</button>
+              <button class="btn btn-sm btn-ghost" onclick="verResultadosExamen('${ex.id}','${ex.titulo}')">📊</button>
+            </div>
+          </div>
+        </div>`).join('')}
+  `;
+}
+
+function abrirNuevoExamenSeccion() {
+  document.getElementById('modal-examen-titulo').textContent = 'Nuevo examen';
+  document.getElementById('examen-id').value = '';
+  document.getElementById('examen-titulo').value = '';
+  document.getElementById('examen-desc').value = '';
+  document.getElementById('examen-tiempo').value = '';
+  document.getElementById('examen-intentos').value = '1';
+  document.getElementById('examen-preguntas').value = '10';
+  document.getElementById('examen-nota').value = '10';
+  document.getElementById('examen-seccion').innerHTML = `<option value="${_seccionActiva}" selected>${_SECCIONES.find(s=>s.id===_seccionActiva)?.nombre || ''}</option>`;
+  openModal('modal-examen');
+}
+
+async function renderEncuestasSeccion() {
+  const el = document.getElementById('tab-encuestas-sec');
+  const { data: encuestas } = await db.from('encuestas').select('*, preguntas_encuesta(count)').eq('seccion_id', _seccionActiva).order('creado_at', { ascending: false });
+
+  el.innerHTML = `
+    <div class="flex-between mb-3">
+      <span class="label">${encuestas?.length || 0} encuestas</span>
+      <button class="btn btn-primary btn-sm" onclick="abrirNuevaEncuestaSeccion()">+ Nueva encuesta</button>
+    </div>
+    ${!encuestas || encuestas.length === 0
+      ? '<div class="empty-state"><div class="empty-icon">📊</div><h3>Sin encuestas</h3></div>'
+      : encuestas.map(enc => `
+        <div class="card mb-2">
+          <div class="card-header">
+            <div>
+              <h3>${enc.titulo}</h3>
+              ${enc.activo ? '<span class="badge badge-green">Activa</span>' : '<span class="badge badge-gray">Inactiva</span>'}
+            </div>
+            <div class="flex gap-1">
+              <button class="btn btn-sm btn-${enc.activo ? 'secondary' : 'primary'}" onclick="toggleEncuesta('${enc.id}',${enc.activo})">${enc.activo ? 'Desactivar' : 'Activar'}</button>
+              <button class="btn btn-sm btn-ghost" onclick="verResultadosEncuesta('${enc.id}','${enc.titulo}')">📊 Resultados</button>
+            </div>
+          </div>
+        </div>`).join('')}
+  `;
+}
+
+function abrirNuevaEncuestaSeccion() {
+  document.getElementById('enc-id').value = '';
+  document.getElementById('enc-titulo').value = '';
+  document.getElementById('enc-desc').value = '';
+  document.getElementById('enc-seccion').innerHTML = `<option value="${_seccionActiva}" selected>${_SECCIONES.find(s=>s.id===_seccionActiva)?.nombre || ''}</option>`;
+  openModal('modal-encuesta-form');
+}
+
+async function renderForoSeccion() {
+  const el = document.getElementById('tab-foro-sec');
+  const { data: posts } = await db.from('foro_posts').select('*, autor:usuarios(nombre,foto_url), foro_respuestas(count)').eq('seccion_id', _seccionActiva).order('fijado',{ascending:false}).order('creado_at',{ascending:false});
+
+  el.innerHTML = `
+    <div class="flex-between mb-3">
+      <span class="label">${posts?.length || 0} publicaciones</span>
+    </div>
+    ${!posts || posts.length === 0
+      ? '<div class="empty-state"><div class="empty-icon">💬</div><h3>Sin publicaciones</h3></div>'
+      : posts.map(post => `
+        <div class="forum-post-card ${post.fijado?'pinned':''} ${post.resuelto?'resolved':''}">
+          <div class="flex-between">
+            <div style="flex:1;cursor:pointer" onclick="abrirPostAdmin('${post.id}')">
+              <div class="flex gap-1 mb-1">
+                ${post.fijado ? '<span class="badge badge-gold">📌 Fijado</span>' : ''}
+                ${post.resuelto ? '<span class="badge badge-green">✓ Resuelto</span>' : ''}
+              </div>
+              <div class="fw-600">${post.titulo}</div>
+              <div style="font-size:12px;color:var(--gray-500);margin-top:4px">${post.autor?.nombre} • ${timeAgo(post.creado_at)} • 💬 ${post.foro_respuestas?.[0]?.count||0}</div>
+            </div>
+            <div class="flex gap-1">
+              <button class="btn btn-sm btn-ghost" onclick="toggleFijado('${post.id}',${post.fijado})">${post.fijado?'Desfijar':'📌 Fijar'}</button>
+              <button class="btn btn-sm btn-ghost" onclick="toggleResuelto('${post.id}',${post.resuelto})">${post.resuelto?'Pendiente':'✓ Resuelto'}</button>
+            </div>
+          </div>
+        </div>`).join('')}
   `;
 }
 
