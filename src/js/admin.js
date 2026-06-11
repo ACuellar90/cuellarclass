@@ -1642,7 +1642,7 @@ async function renderDocentes() {
                   <div class="flex gap-1">
                     <button class="btn btn-sm btn-ghost" onclick="editarDocente('${d.id}')">✏️ Editar</button>
                     ${d.id !== SESSION.id
-                      ? `<button class="btn btn-sm btn-ghost" onclick="desactivarDocente('${d.id}')">🗑 Desactivar</button>`
+                      ? `<button class="btn btn-sm btn-ghost" onclick="eliminarDocente('${d.id}','${d.nombre}')">🗑 Eliminar</button>`
                       : ''}
                   </div>
                 </td>
@@ -1728,10 +1728,11 @@ async function submitDocente() {
   }
 }
 
-async function desactivarDocente(id) {
-  if (!confirm('Desactivar este docente?')) return;
-  await db.from('usuarios').update({ activo: false }).eq('id', id);
-  showToast('Docente desactivado', 'success');
+async function eliminarDocente(id, nombre) {
+  if (!confirm(`Eliminar a ${nombre}? Esta accion no se puede deshacer.`)) return;
+  const { error } = await db.from('usuarios').delete().eq('id', id);
+  if (error) { showToast('Error al eliminar: ' + error.message, 'error'); return; }
+  showToast('Docente eliminado', 'success');
   _loaded['docentes'] = false;
   await renderDocentes();
 }
