@@ -13,10 +13,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   showLoading();
   try {
-    // Cargar es_admin del usuario actual
-    const { data: yo } = await db.from('usuarios').select('es_admin, seccion_id').eq('id', SESSION.id).single();
+    // Cargar es_admin y materia_id del usuario actual
+    const { data: yo } = await db.from('usuarios').select('es_admin, materia_id').eq('id', SESSION.id).single();
     SESSION.es_admin  = yo?.es_admin  || false;
-    SESSION.seccion_id = yo?.seccion_id || SESSION.seccion_id;
+    SESSION.materia_id = yo?.materia_id || null;
 
     await cargarSeccionesYMaterias();
     renderSidebar();
@@ -144,7 +144,11 @@ async function renderAlumnos() {
   const el = document.getElementById('section-alumnos');
 
   let query = db.from('usuarios').select('*, secciones(nombre, materias(nombre))').eq('rol', 'alumno').eq('activo', true).order('nombre');
-  if (!SESSION.es_admin && SESSION.seccion_id) query = query.eq('seccion_id', SESSION.seccion_id);
+  if (!SESSION.es_admin && SESSION.materia_id) {
+    // Obtener secciones de la materia del docente
+    const seccionIds = _SECCIONES.filter(s => s.materia_id === SESSION.materia_id).map(s => s.id);
+    if (seccionIds.length > 0) query = query.in('seccion_id', seccionIds);
+  }
   const { data: alumnos } = await query;
 
   el.innerHTML = `
@@ -367,7 +371,7 @@ async function renderTareas() {
   const el = document.getElementById('section-tareas');
 
   let query = db.from('tareas').select('*, secciones(nombre), materias(nombre)').eq('activo', true).order('creado_at', { ascending: false });
-  if (!SESSION.es_admin && SESSION.seccion_id) query = query.eq('seccion_id', SESSION.seccion_id);
+  if (!SESSION.es_admin && SESSION.materia_id) query = query.eq('materia_id', SESSION.materia_id);
   const { data: tareas } = await query;
 
   el.innerHTML = `
@@ -546,7 +550,7 @@ async function renderExamenes() {
   const el = document.getElementById('section-examenes');
 
   let query = db.from('examenes').select('*, secciones(nombre)').order('creado_at', { ascending: false });
-  if (!SESSION.es_admin && SESSION.seccion_id) query = query.eq('seccion_id', SESSION.seccion_id);
+  if (!SESSION.es_admin && SESSION.materia_id) query = query.eq('materia_id', SESSION.materia_id);
   const { data: examenes } = await query;
 
   el.innerHTML = `
@@ -903,7 +907,7 @@ async function renderEncuestas() {
   const el = document.getElementById('section-encuestas');
 
   let query = db.from('encuestas').select('*, secciones(nombre), preguntas_encuesta(count)').order('creado_at', { ascending: false });
-  if (!SESSION.es_admin && SESSION.seccion_id) query = query.eq('seccion_id', SESSION.seccion_id);
+  if (!SESSION.es_admin && SESSION.materia_id) query = query.eq('materia_id', SESSION.materia_id);
   const { data: encuestas } = await query;
 
   el.innerHTML = `
@@ -1002,7 +1006,7 @@ async function renderForo() {
   const el = document.getElementById('section-foro');
 
   let query = db.from('foro_posts').select('*, autor:usuarios(nombre), secciones(nombre), foro_respuestas(count)').order('fijado', { ascending: false }).order('creado_at', { ascending: false });
-  if (!SESSION.es_admin && SESSION.seccion_id) query = query.eq('seccion_id', SESSION.seccion_id);
+  if (!SESSION.es_admin && SESSION.materia_id) query = query.eq('materia_id', SESSION.materia_id);
   const { data: posts } = await query;
 
   el.innerHTML = `
@@ -1290,7 +1294,7 @@ async function renderDocentes() {
 
   const { data: docentes } = await db
     .from('usuarios')
-    .select('*, secciones(nombre)')
+    .select('*, materias(nombre)')
     .eq('rol', 'docente')
     .eq('activo', true)
     .order('nombre');
@@ -1302,7 +1306,7 @@ async function renderDocentes() {
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Docente</th><th>Email</th><th>Seccion</th><th>Rol</th><th></th></tr></thead>
+        <thead><tr><th>Docente</th><th>Email</th><th>Materia</th><th>Rol</th><th></th></tr></thead>
         <tbody>
           ${!docentes || docentes.length === 0
             ? '<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">👨‍🏫</div><h3>Sin docentes</h3><p>Crea el primer docente.</p></div></td></tr>'
@@ -1318,7 +1322,7 @@ async function renderDocentes() {
                   </div>
                 </td>
                 <td class="text-gray">${d.email}</td>
-                <td>${d.secciones ? `<span class="seccion-chip">${d.secciones.nombre}</span>` : '<span class="badge badge-gray">Todas</span>'}</td>
+                <td>${d.materias ? `<span class="badge badge-navy">${d.materias.nombre}</span>` : '<span class="badge badge-gray">Todas</span>'}</td>
                 <td>${d.es_admin ? '<span class="badge badge-navy">Superadmin</span>' : '<span class="badge badge-gold">Docente</span>'}</td>
                 <td>
                   <div class="flex gap-1">
@@ -1341,7 +1345,7 @@ function abrirNuevoDocente() {
   document.getElementById('docente-nombre').value = '';
   document.getElementById('docente-email').value = '';
   document.getElementById('docente-pass').value = '';
-  document.getElementById('docente-seccion').innerHTML = `<option value="">-- Todas las secciones (admin) --</option>${seccionOptions()}`;
+  document.getElementById('docente-materia').innerHTML = `<option value="">-- Todas las materias (admin) --</option>${materiaOptions()}`;
   document.getElementById('docente-foto-preview').innerHTML = '';
   openModal('modal-docente');
 }
@@ -1353,7 +1357,7 @@ async function editarDocente(id) {
   document.getElementById('docente-nombre').value = d.nombre;
   document.getElementById('docente-email').value = d.email;
   document.getElementById('docente-pass').value = '';
-  document.getElementById('docente-seccion').innerHTML = `<option value="">-- Todas las secciones (admin) --</option>${seccionOptions(d.seccion_id)}`;
+  document.getElementById('docente-materia').innerHTML = `<option value="">-- Todas las materias (admin) --</option>${materiaOptions(d.materia_id)}`;
   document.getElementById('docente-foto-preview').innerHTML = d.foto_url
     ? `<img src="${d.foto_url}" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)">` : '';
   openModal('modal-docente');
@@ -1364,7 +1368,7 @@ async function submitDocente() {
   const nombre  = document.getElementById('docente-nombre').value.trim();
   const email   = document.getElementById('docente-email').value.trim().toLowerCase();
   const pass    = document.getElementById('docente-pass').value;
-  const seccion = document.getElementById('docente-seccion').value;
+  const materia = document.getElementById('docente-materia').value;
   const foto    = document.getElementById('docente-foto').files[0];
 
   if (!nombre || !email) { showToast('Nombre y email son obligatorios', 'error'); return; }
@@ -1380,8 +1384,8 @@ async function submitDocente() {
 
     const payload = {
       nombre, email, rol: 'docente', activo: true,
-      seccion_id: seccion || null,
-      es_admin: !seccion, // si no tiene seccion asignada es admin
+      materia_id: materia || null,
+      es_admin: !materia,
       ...(foto_url ? { foto_url } : {}),
     };
 
